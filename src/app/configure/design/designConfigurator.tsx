@@ -2,11 +2,11 @@
 import HandleResizeComponent from "@/components/handleResizeComponent";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn, formatePrice } from "@/lib/utils";
 import NextImage from "next/image";
 import { Rnd } from "react-rnd";
 import { RadioGroup } from "@headlessui/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   COLORS,
   FINISHES,
@@ -21,7 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { ArrowRight, Check, ChevronsUpDown } from "lucide-react";
+import { BASE_PRICE } from "@/config/config";
 
 interface DesignConfigurationProps {
   configId: string;
@@ -45,11 +46,48 @@ const DesignConfiguration = ({
     material: MATERIALS.options[0],
     finish: FINISHES.options[0],
   });
+
+  const [rendererDimension, setRendererDimension] = useState({
+    width: dimension.width / 4,
+    height: dimension.height / 4,
+  });
+
+  const [rendererPosition, setRendererPosition] = useState({
+    x: 150,
+    y: 205,
+  });
+
+  const phoneCaseRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const saveImageConfiguration = async () => {
+    try {
+      const {
+        left: caseLeft,
+        top: caseTop,
+        width,
+        height,
+      } = phoneCaseRef.current!.getBoundingClientRect();
+
+      const { left: containerLeft, top: containerTop } =
+        containerRef.current!.getBoundingClientRect();
+
+      const leftOffset = caseLeft - containerLeft;
+      const topOffset = caseTop - containerTop;
+
+      const actualX = rendererPosition.x - leftOffset;
+      const actualY = rendererPosition.y - topOffset;
+    } catch (error) {}
+  };
   return (
-    <div className="relative mt-20 grid grid-cols-3 mb-20 pb-20">
-      <div className="relative h-[37.5rem] overflow-hidden col-span-2 w-full max-w-4xl flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-12 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+    <div className="relative mt-20 grid-cols-1 grid lg:grid-cols-3 mb-20 pb-20">
+      <div
+        ref={containerRef}
+        className="relative h-[37.5rem] overflow-hidden col-span-2 w-full max-w-4xl flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-12 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+      >
         <div className="relative w-60 bg-opacity-50 pointer-events-none aspect-[896/1831]">
           <AspectRatio
+            ref={phoneCaseRef}
             ratio={896 / 1831}
             className="pointer-events-none relative z-50 aspect-[896/1831] w-full"
           >
@@ -71,7 +109,7 @@ const DesignConfiguration = ({
         <Rnd
           default={{
             x: 150,
-            y: 202,
+            y: 205,
             width: dimension.width / 4,
             height: dimension.height / 4,
           }}
@@ -81,6 +119,20 @@ const DesignConfiguration = ({
             bottomLeft: <HandleResizeComponent />,
             topRight: <HandleResizeComponent />,
             topLeft: <HandleResizeComponent />,
+          }}
+          onResizeStop={(_, __, ref, ___, { x, y }) => {
+            setRendererDimension({
+              height: parseInt(ref.style.height.slice(0, -2)),
+              width: parseInt(ref.style.width.slice(0 - 2)),
+            });
+            setRendererPosition({
+              x,
+              y,
+            });
+          }}
+          onDragStop={(_, data) => {
+            const { x, y } = data;
+            setRendererPosition({ x, y });
           }}
           className="absolute z-20 border-[3px] border-primary"
         >
@@ -94,7 +146,7 @@ const DesignConfiguration = ({
           </div>
         </Rnd>
       </div>
-      <div className="h-[37.5rem] flex flex-col bg-white">
+      <div className="h-[37.5rem] w-full col-span-full lg:col-span-1 flex flex-col bg-white">
         <ScrollArea className="relative flex-1 overflow-auto">
           <div className="absolute z-10 inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white pointer-events-none" />
           <div className="px-8 pb-12 pt-8">
@@ -203,11 +255,34 @@ const DesignConfiguration = ({
                           >
                             <span className="flex items-center">
                               <span className="flex flex-col text-sm">
-                                <RadioGroup.Label as="span">
+                                <RadioGroup.Label
+                                  as="span"
+                                  className={"font-medium text-gray-900"}
+                                >
                                   {option.label}
                                 </RadioGroup.Label>
+                                {option.description ? (
+                                  <RadioGroup.Description
+                                    as="span"
+                                    className={"text-gray-500"}
+                                  >
+                                    <span className="block sm:inline">
+                                      {option.description}
+                                    </span>
+                                  </RadioGroup.Description>
+                                ) : null}
                               </span>
                             </span>
+                            <RadioGroup.Description
+                              as="span"
+                              className={
+                                "mt-2 flex text-sm sm:ml-4 sm:mt-0 sm:flex-col sm:text-right"
+                              }
+                            >
+                              <span className="font-medium text-gray-900">
+                                {formatePrice(option.price / 100)}
+                              </span>
+                            </RadioGroup.Description>
                           </RadioGroup.Option>
                         ))}
                       </div>
@@ -218,6 +293,23 @@ const DesignConfiguration = ({
             </div>
           </div>
         </ScrollArea>
+        <div className="px-8 w-full h-16 bg-white">
+          <div className="h-px w-full bg-zinc-200" />
+          <div className="w-full h-full flex justify-end items-center">
+            <div className="w-full flex gap-6 items-center">
+              <p className="font-medium whitespace-nowrap">
+                {formatePrice(
+                  (BASE_PRICE + options.finish.price + options.material.price) /
+                    100
+                )}
+              </p>
+              <Button size={"sm"} className="w-full">
+                Continue
+                <ArrowRight className="h-4 w-4 ml-1.5 inline" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
