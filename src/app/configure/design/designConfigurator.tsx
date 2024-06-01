@@ -21,10 +21,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowRight, Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { BASE_PRICE } from "@/config/config";
 import { useUploadThing } from "@/lib/uploadthing";
 import { useToast } from "@/components/ui/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { SaveConfigArgs, saveConfig as _saveConfig } from "./actions";
+import { useRouter } from "next/navigation";
 
 interface DesignConfigurationProps {
   configId: string;
@@ -38,16 +41,18 @@ const DesignConfiguration = ({
   dimension,
 }: DesignConfigurationProps) => {
   const [options, setOptions] = useState<{
-    color: typeof COLORS[number];
-    model: typeof MODELS.options[number];
-    material: typeof MATERIALS.options[number];
-    finish: typeof FINISHES.options[number];
+    color: (typeof COLORS)[number];
+    model: (typeof MODELS.options)[number];
+    material: (typeof MATERIALS.options)[number];
+    finish: (typeof FINISHES.options)[number];
   }>({
     color: COLORS[0],
     model: MODELS.options[0],
     material: MATERIALS.options[0],
     finish: FINISHES.options[0],
   });
+
+  const router = useRouter();
 
   const [rendererDimension, setRendererDimension] = useState({
     width: dimension.width / 4,
@@ -61,10 +66,12 @@ const DesignConfiguration = ({
 
   const phoneCaseRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const { startUpload } = useUploadThing("imageUploader");
   const { toast } = useToast();
   const saveImageConfiguration = async () => {
+    setLoading(true);
     try {
       const {
         left: caseLeft,
@@ -73,10 +80,8 @@ const DesignConfiguration = ({
         height,
       } = phoneCaseRef.current!.getBoundingClientRect();
 
-      const {
-        left: containerLeft,
-        top: containerTop,
-      } = containerRef.current!.getBoundingClientRect();
+      const { left: containerLeft, top: containerTop } =
+        containerRef.current!.getBoundingClientRect();
 
       const leftOffset = caseLeft - containerLeft;
       const topOffset = caseTop - containerTop;
@@ -113,14 +118,35 @@ const DesignConfiguration = ({
       const res = await startUpload([file], {
         configId,
       });
+
+      console.log(res);
     } catch (error) {
       toast({
         title: "Something went wrong",
         description: "There was a problem saving your config, please try again",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
+
+  const { mutate: saveConfig } = useMutation({
+    mutationKey: ["save-config"],
+    mutationFn: async (args: SaveConfigArgs) => {
+      await Promise.all([saveImageConfiguration(), _saveConfig(args)]);
+    },
+    onError: () => {
+      toast({
+        title: "Something went wrong",
+        description: "There was an error on our end. Please try again",
+        variant: "destructive",
+      });
+    },
+    onSuccess: () => {
+      router.push(`/configure/preview?id=${configId}`);
+    },
+  });
 
   function base64Blob(base64: string, mimeType: string) {
     const byteCharacters = atob(base64);
@@ -177,7 +203,7 @@ const DesignConfiguration = ({
           onResizeStop={(_, __, ref, ___, { x, y }) => {
             setRendererDimension({
               height: parseInt(ref.style.height.slice(0, -2)),
-              width: parseInt(ref.style.width.slice(0 - 2)),
+              width: parseInt(ref.style.width.slice(0, -2)),
             });
             setRendererPosition({
               x,
@@ -360,8 +386,20 @@ const DesignConfiguration = ({
               <Button
                 size={"sm"}
                 className="w-full"
-                onClick={saveImageConfiguration}
+                onClick={() =>
+                  saveConfig({
+                    color: options.color.value,
+                    configId,
+                    finish: options.finish.value,
+                    material: options.material.value,
+                    model: options.model.value,
+                  })
+                }
+                disabled={loading}
               >
+                {loading ? (
+                  <Loader2 className="animate-spin mr-1.5 w-5 h-5" />
+                ) : null}
                 Continue
                 <ArrowRight className="h-4 w-4 ml-1.5 inline" />
               </Button>

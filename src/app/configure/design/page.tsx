@@ -18,7 +18,7 @@ const Page = async ({ searchParams }: PageProps) => {
     where: { id },
   });
 
-  if (!configuration.id) return notFound();
+  if (!configuration?.id) return notFound();
 
   const { width, height, imageUrl } = configuration;
 
