@@ -41,10 +41,10 @@ const DesignConfiguration = ({
   dimension,
 }: DesignConfigurationProps) => {
   const [options, setOptions] = useState<{
-    color: (typeof COLORS)[number];
-    model: (typeof MODELS.options)[number];
-    material: (typeof MATERIALS.options)[number];
-    finish: (typeof FINISHES.options)[number];
+    color: typeof COLORS[number];
+    model: typeof MODELS.options[number];
+    material: typeof MATERIALS.options[number];
+    finish: typeof FINISHES.options[number];
   }>({
     color: COLORS[0],
     model: MODELS.options[0],
@@ -80,8 +80,10 @@ const DesignConfiguration = ({
         height,
       } = phoneCaseRef.current!.getBoundingClientRect();
 
-      const { left: containerLeft, top: containerTop } =
-        containerRef.current!.getBoundingClientRect();
+      const {
+        left: containerLeft,
+        top: containerTop,
+      } = containerRef.current!.getBoundingClientRect();
 
       const leftOffset = caseLeft - containerLeft;
       const topOffset = caseTop - containerTop;
@@ -118,8 +120,6 @@ const DesignConfiguration = ({
       const res = await startUpload([file], {
         configId,
       });
-
-      console.log(res);
     } catch (error) {
       toast({
         title: "Something went wrong",
@@ -396,10 +396,9 @@ const DesignConfiguration = ({
                   })
                 }
                 disabled={loading}
+                isLoading={loading}
+                LoadingText="Loading"
               >
-                {loading ? (
-                  <Loader2 className="animate-spin mr-1.5 w-5 h-5" />
-                ) : null}
                 Continue
                 <ArrowRight className="h-4 w-4 ml-1.5 inline" />
               </Button>
