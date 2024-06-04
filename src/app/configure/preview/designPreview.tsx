@@ -5,12 +5,23 @@ import { COLORS, MODELS } from "@/components/validator/options.validator";
 import { BASE_PRICE, PRODUCT_PRICES } from "@/config/config";
 import { cn, formatePrice } from "@/lib/utils";
 import { Configuration } from "@prisma/client";
+import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import Confetti from "react-dom-confetti";
+import { createCheckoutSession } from "./actions";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs";
+import LoginModal from "@/components/LoginModal";
 
 const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
   const [showConfetti, setShowConfetti] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
+  const { user } = useKindeBrowserClient();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
   useEffect(() => setShowConfetti(true));
 
   const { color, model: mobileModel, finish, material } = configuration;
@@ -29,6 +40,32 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
   if (finish === "textured") {
     totalPrice += PRODUCT_PRICES.finish.textured;
   }
+
+  const { mutate: createPaymentSession } = useMutation({
+    mutationKey: ["get-checkout-session"],
+    mutationFn: createCheckoutSession,
+    onSuccess: ({ url }) => {
+      if (url) router.push(url);
+      else throw new Error("Unable to retrieve payment URL");
+    },
+    onError: (error) => {
+      console.log(error);
+      toast({
+        title: "Something went wrong",
+        description: "There is an error on our end. Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCheckout = () => {
+    if (user) {
+      createPaymentSession({ configId: configuration.id });
+    } else {
+      localStorage.setItem("configurationId", configuration.id);
+      setIsLoginModalOpen(true);
+    }
+  };
   return (
     <>
       <div
@@ -48,6 +85,7 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
           }}
         />
       </div>
+      <LoginModal isOpen={isLoginModalOpen} setIsOpen={setIsLoginModalOpen} />
       <div className="mt-12 grid grid-cols-1 text-sm sm:grid-cols-12 sm:grid-rows-1 sm:gap-x-6 md:gap-x-8 lg:gap-x-12">
         <div className="sm:col-span-4 md:col-span-3 md:row-span-2 md:row-end-2">
           <Phone className={cn(`bg-${tw}`)} imgSrc={croppedImageUrl!} />
@@ -119,6 +157,7 @@ const DesignPreview = ({ configuration }: { configuration: Configuration }) => {
             </div>
             <div className="mt-3 flex justify-end pb-12">
               <Button
+                onClick={() => handleCheckout()}
                 LoadingText="loading"
                 className="px-4 sm:px-6 lg:px-8"
               >
