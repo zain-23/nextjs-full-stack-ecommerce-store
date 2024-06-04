@@ -21,9 +21,9 @@ export const ourFileRouter = {
      if (!configId) {
       const configuration = await db.configuration.create({
         data:{
-          imageUrl:file.url,
           width:width || 500,
-          height:height || 500
+          height:height || 500,
+          imageUrl:file.url
         }
       })
       return {configId:configuration.id}
