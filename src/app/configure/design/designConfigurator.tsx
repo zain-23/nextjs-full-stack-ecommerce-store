@@ -71,7 +71,6 @@ const DesignConfiguration = ({
   const { startUpload } = useUploadThing("imageUploader");
   const { toast } = useToast();
   const saveImageConfiguration = async () => {
-    setLoading(true);
     try {
       const {
         left: caseLeft,
@@ -126,12 +125,10 @@ const DesignConfiguration = ({
         description: "There was a problem saving your config, please try again",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  const { mutate: saveConfig } = useMutation({
+  const { mutate: saveConfig, isPending } = useMutation({
     mutationKey: ["save-config"],
     mutationFn: async (args: SaveConfigArgs) => {
       await Promise.all([saveImageConfiguration(), _saveConfig(args)]);
@@ -395,9 +392,9 @@ const DesignConfiguration = ({
                     model: options.model.value,
                   })
                 }
-                disabled={loading}
-                isLoading={loading}
-                LoadingText="Loading"
+                disabled={isPending}
+                isLoading={isPending}
+                LoadingText="Saving"
               >
                 Continue
                 <ArrowRight className="h-4 w-4 ml-1.5 inline" />
